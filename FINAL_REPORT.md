@@ -182,7 +182,7 @@ sudo systemctl restart ascii-motion-api ascii-motion-worker
 
 - GIF frame deduplication is implemented; disposal methods remain basic.
 - Worker currently shares the same SQLite file; fine for single-server load, may need queue migration if scaled horizontally.
-- Audio track preservation in video export is not implemented.
+- Worker currently shares the same SQLite file; fine for single-server load, may need queue migration if scaled horizontally.
 
 ---
 
@@ -198,6 +198,7 @@ The application meets the core completion criteria:
 - ✅ Standalone HTML animation export
 - ✅ ZIP export package
 - ✅ MP4 and WebM export
+- ✅ Audio track preservation for MP4/WebM exports
 - ✅ Animation effects engine (pulse, flicker, scan, glitch, matrix, wave, noise, fade_in, fade_out, color_shift, zoom, rotation, particles, terminal_cursor)
 - ✅ Reverse playback, start/end trim, loop, frame interpolation
 - ✅ Reduced-motion support in HTML export
