@@ -57,9 +57,11 @@
 ## 4. Systemd status
 
 ```
-ascii-motion-api.service     active (running)
-ascii-motion-worker.service  active (running)
-ascii-motion-cleanup.timer   active (waiting, daily)
+ascii-motion-api.service           active (running)
+ascii-motion-worker.service        active (running)
+ascii-motion-cleanup.timer         active (waiting, daily)
+ascii-motion-backup.timer          active (waiting, daily)
+ascii-motion-health-check.timer    active (waiting, every minute)
 ```
 
 ---
@@ -143,8 +145,7 @@ Stored in `examples/` and produced during deployment testing:
 | Runs as unprivileged user `sha` | ✅ |
 
 **Risk notes:**
-- API token is currently a demo token; rotate before production use.
-- No rate limiting middleware is installed yet (limit enforced by Hestia/nginx only).
+- API token is configured in backend `.env` only; frontend asks the user for it and stores it locally.
 
 ---
 
@@ -158,6 +159,8 @@ sudo tar czf /var/backups/ascii-motion-$(date +%Y%m%d).tar.gz \
 ```
 
 Daily cleanup timer removes temp files older than 48 h and exports older than 14 days.
+Daily backup timer creates `/var/backups/ascii-motion-YYYYMMDD-HHMMSS.tar.gz` and keeps the last 14 backups.
+Health check runs every minute against `http://127.0.0.1:8001/api/v1/health`.
 
 ---
 
@@ -180,7 +183,7 @@ sudo systemctl restart ascii-motion-api ascii-motion-worker
 - Advanced GIF optimization (frame deduplication, disposal methods) is basic.
 - Reduced-motion preference not yet enforced in HTML export.
 - Worker currently shares the same SQLite file; fine for single-server load, may need queue migration if scaled horizontally.
-- Zoom, rotation, particles and terminal-cursor effects are placeholders; not yet implemented.
+- Audio track preservation in video export is not implemented.
 
 ---
 
@@ -196,7 +199,8 @@ The application meets the core completion criteria:
 - ✅ Standalone HTML animation export
 - ✅ ZIP export package
 - ✅ MP4 and WebM export
-- ✅ Animation effects engine (pulse, flicker, scan, glitch, matrix, wave, noise, fade_in, fade_out, color_shift)
+- ✅ Animation effects engine (pulse, flicker, scan, glitch, matrix, wave, noise, fade_in, fade_out, color_shift, zoom, rotation, particles, terminal_cursor)
+- ✅ Reverse playback, start/end trim, loop, frame interpolation
 - ✅ Project save/open API
 - ✅ Documented REST API with OpenAPI
 - ✅ Systemd services running and auto-restarting
