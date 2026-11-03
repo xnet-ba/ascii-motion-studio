@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getClient } from './api'
 import {
@@ -22,6 +22,7 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem('ams_token') || '')
   const [section, setSection] = useState('upload')
   const [file, setFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploaded, setUploaded] = useState<any>(null)
   const [width, setWidth] = useState(120)
   const [mode, setMode] = useState('grayscale')
@@ -35,6 +36,9 @@ export default function App() {
   const [loop, setLoop] = useState(0)
   const [reverse, setReverse] = useState(false)
   const [interpolate, setInterpolate] = useState(false)
+  const [colorMapping, setColorMapping] = useState('auto')
+  const [fgColor, setFgColor] = useState('#00ff00')
+  const [reducedMotion, setReducedMotion] = useState(false)
   const [outputFormat, setOutputFormat] = useState('png')
   const [effects, setEffects] = useState<string[]>([])
   const [jobs, setJobs] = useState<any[]>([])
@@ -75,11 +79,12 @@ export default function App() {
   }
 
   const handleUpload = async () => {
-    if (!file) return
+    const selected = fileInputRef.current?.files?.[0] || file
+    if (!selected) return
     setLoading(true)
     setMessage('')
     const form = new FormData()
-    form.append('file', file)
+    form.append('file', selected)
     try {
       const { data } = await api.post('/upload', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -90,6 +95,12 @@ export default function App() {
       setMessage(e.response?.data?.detail || 'Greška pri učitavanju')
     }
     setLoading(false)
+  }
+
+  const hexToRgb = (hex: string): [number, number, number] => {
+    const v = hex.replace('#', '')
+    const bigint = parseInt(v, 16)
+    return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255]
   }
 
   const buildPayload = (extra: any = {}) => ({
@@ -106,6 +117,9 @@ export default function App() {
     loop,
     reverse,
     interpolate,
+    color_mapping: colorMapping,
+    fg_color: colorMapping === 'manual' ? hexToRgb(fgColor) : null,
+    reduced_motion: reducedMotion,
     effects: effects.map((name) => ({ name, intensity: 0.5, speed: 1.0, direction: 'horizontal' })),
     ...extra,
   })
@@ -247,6 +261,7 @@ export default function App() {
           <div className="space-y-4 max-w-xl">
             <h2 className="text-xl font-semibold">{t('upload')}</h2>
             <input
+              ref={fileInputRef}
               type="file"
               accept="image/*,video/*"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
@@ -254,7 +269,7 @@ export default function App() {
             />
             <button
               onClick={handleUpload}
-              disabled={loading || !file}
+              disabled={loading}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 rounded text-white"
             >
               {loading ? t('processing') : t('upload')}
@@ -300,6 +315,19 @@ export default function App() {
                   <option value="transparent">{t('transparent')}</option>
                 </select>
               </label>
+              <label className="block">
+                Color mapping
+                <select value={colorMapping} onChange={(e) => setColorMapping(e.target.value)} className="w-full mt-1 p-2 bg-slate-900 border border-slate-700 rounded">
+                  <option value="auto">Auto</option>
+                  <option value="manual">Manual</option>
+                </select>
+              </label>
+              {colorMapping === 'manual' && (
+                <label className="block">
+                  Foreground color
+                  <input type="color" value={fgColor} onChange={(e) => setFgColor(e.target.value)} className="w-full mt-1 h-10 p-1 bg-slate-900 border border-slate-700 rounded" />
+                </label>
+              )}
               {section !== 'imageToAscii' && (
                 <>
                   <label className="block">
@@ -367,6 +395,12 @@ export default function App() {
                   <input type="checkbox" checked={interpolate} onChange={(e) => setInterpolate(e.target.checked)} />
                   Interpolate
                 </label>
+                {(section === 'animation' || outputFormat === 'html') && (
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={reducedMotion} onChange={(e) => setReducedMotion(e.target.checked)} />
+                    Reduced motion
+                  </label>
+                )}
               </div>
             )}
             {section === 'animation' && (

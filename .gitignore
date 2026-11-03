@@ -49,3 +49,9 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+

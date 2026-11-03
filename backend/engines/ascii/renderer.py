@@ -231,6 +231,10 @@ def render_ascii(img: Image.Image, options: RenderOptions) -> ASCIIGrid:
             else:
                 ch = " "
                 col = (0, 0, 0, 0)
+
+            if options.color_mapping == "manual" and options.fg_color:
+                col = (*options.fg_color, col[3])
+
             row_chars.append(ch)
             row_colors.append(col)
         chars.append(row_chars)

@@ -30,6 +30,8 @@ class ImageConvertRequest(BaseModel):
     denoise: bool = False
     quantize: int = Field(default=0, ge=0, le=64)
     contrast_adapt: bool = False
+    color_mapping: str = "auto"
+    fg_color: Optional[Tuple[int, int, int]] = None
     output_format: str = "png"
 
     class Config:

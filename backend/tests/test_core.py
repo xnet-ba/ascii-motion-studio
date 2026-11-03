@@ -253,3 +253,33 @@ class TestJobsAndPersistence:
             assert j["status"] == "pending"
         finally:
             db.DB_PATH = old_db
+
+    def test_delete_old_jobs(self, tmp_root):
+        old_db = db.DB_PATH
+        db.DB_PATH = tmp_root / "test.db"
+        try:
+            db.init_db()
+            old_jid = db.create_job(None, "image_png", "/tmp/x.png")
+            db.update_job(old_jid, status="failed")
+            new_jid = db.create_job(None, "image_png", "/tmp/x.png")
+            db.update_job(new_jid, status="failed")
+            cutoff = "2099-01-01T00:00:00"
+            assert db.delete_old_jobs(cutoff) == 2
+            assert db.get_job(old_jid) is None
+            assert db.get_job(new_jid) is None
+        finally:
+            db.DB_PATH = old_db
+
+
+class TestColorMapping:
+    def test_manual_fg_color(self, tmp_root):
+        src = tmp_root / "logo.png"
+        out = tmp_root / "out.png"
+        make_logo_png(src)
+        opts = RenderOptions(width=40, mode="grayscale", background="black",
+                             color_mapping="manual", fg_color=(0, 255, 0))
+        grid = render_ascii(Image.open(src), opts)
+        colors = [c for row in grid.colors for c in row]
+        # All non-background characters should be green
+        non_bg = [c for c in colors if c[3] > 0]
+        assert all(c[:3] == (0, 255, 0) for c in non_bg)

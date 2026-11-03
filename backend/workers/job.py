@@ -20,6 +20,7 @@ _worker_thread: Optional[threading.Thread] = None
 
 def _options_from_dict(opts: dict) -> RenderOptions:
     bg_color = opts.get("background_color")
+    fg_color = opts.get("fg_color")
     return RenderOptions(
         width=opts.get("width", 120),
         height=opts.get("height"),
@@ -37,6 +38,8 @@ def _options_from_dict(opts: dict) -> RenderOptions:
         background_color=tuple(bg_color) if bg_color else None,
         quantize=opts.get("quantize", 0),
         contrast_adapt=opts.get("contrast_adapt", False),
+        color_mapping=opts.get("color_mapping", "auto"),
+        fg_color=tuple(fg_color) if fg_color else None,
     )
 
 
@@ -88,6 +91,7 @@ def _process_job(job_id: int, job_type: str, payload: dict) -> None:
                     fps=fps, max_duration=max_duration,
                     max_frames=settings.MAX_FRAMES,
                     effects=effects,
+                    reduced_motion=payload["options"].get("reduced_motion", False),
                 )
                 db.update_job(job_id, status="completed", progress=1.0,
                               output_path=str(output_path),
@@ -119,6 +123,7 @@ def _process_job(job_id: int, job_type: str, payload: dict) -> None:
                     fps=fps, max_duration=max_duration,
                     max_frames=settings.MAX_FRAMES,
                     effects=effects,
+                    reduced_motion=payload["options"].get("reduced_motion", False),
                 )
             else:
                 result = render_animation(

@@ -130,7 +130,25 @@ def update_job(job_id: int, status: Optional[str] = None, progress: Optional[flo
         conn.commit()
 
 
-def list_jobs(limit: int = 100) -> list:
+def list_jobs(limit: int = 100, status: Optional[str] = None) -> list:
     with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM jobs ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+        if status:
+            rows = conn.execute(
+                "SELECT * FROM jobs WHERE status = ? ORDER BY created_at DESC LIMIT ?",
+                (status, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM jobs ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
         return [dict(r) for r in rows]
+
+
+def delete_old_jobs(cutoff_iso: str, statuses: tuple = ("failed", "pending")) -> int:
+    """Remove jobs with given statuses older than cutoff."""
+    placeholders = ",".join("?" * len(statuses))
+    with get_conn() as conn:
+        cur = conn.execute(
+            f"DELETE FROM jobs WHERE status IN ({placeholders}) AND created_at < ?",
+            (*statuses, cutoff_iso),
+        )
+        conn.commit()
+        return cur.rowcount

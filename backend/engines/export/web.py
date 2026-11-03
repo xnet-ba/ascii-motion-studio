@@ -34,7 +34,8 @@ def _encode_frames(frames_dir: Path, options: RenderOptions, max_frames: int = 6
 
 def render_web_animation(input_path: Path, output_path: Path, options: RenderOptions,
                          fps: int = 15, max_duration: int = 10,
-                         max_frames: int = 60, effects: Optional[list] = None) -> dict:
+                         max_frames: int = 60, effects: Optional[list] = None,
+                         reduced_motion: bool = False) -> dict:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     work_dir = output_path.parent / f"web_{output_path.stem}"
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -55,6 +56,7 @@ def render_web_animation(input_path: Path, output_path: Path, options: RenderOpt
         "fps": actual_fps,
         "background": bg,
         "frames": frames,
+        "reduced_motion": reduced_motion,
     }
     # Embed JSON in HTML; moderate compression by base64
     b64 = base64.b64encode(json.dumps(payload).encode("utf-8")).decode("ascii")
@@ -96,6 +98,7 @@ let frameIdx = 0;
 let playing = true;
 let looping = true;
 let last = 0;
+const reducedMotion = data.reduced_motion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function draw(frame) {{
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -111,20 +114,22 @@ function draw(frame) {{
 }}
 
 function step(ts) {{
-  if (!last) last = ts;
-  const dt = ts - last;
-  if (playing && dt > 1000 / data.fps) {{
-    draw(data.frames[frameIdx]);
-    frameIdx++;
-    if (frameIdx >= data.frames.length) {{
-      if (looping) frameIdx = 0; else {{ playing = false; frameIdx = data.frames.length - 1; }}
+  if (!reducedMotion) {{
+    if (!last) last = ts;
+    const dt = ts - last;
+    if (playing && dt > 1000 / data.fps) {{
+      draw(data.frames[frameIdx]);
+      frameIdx++;
+      if (frameIdx >= data.frames.length) {{
+        if (looping) frameIdx = 0; else {{ playing = false; frameIdx = data.frames.length - 1; }}
+      }}
+      last = ts;
     }}
-    last = ts;
+    requestAnimationFrame(step);
   }}
-  requestAnimationFrame(step);
 }}
 draw(data.frames[0]);
-requestAnimationFrame(step);
+if (!reducedMotion) requestAnimationFrame(step);
 
 document.getElementById('play').onclick = () => playing = true;
 document.getElementById('pause').onclick = () => playing = false;

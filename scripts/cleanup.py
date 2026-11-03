@@ -8,8 +8,10 @@ import sys
 
 sys.path.insert(0, "/opt/ascii-motion-studio/backend")
 from core.config import settings
+from storage.db import delete_old_jobs
 
 MAX_AGE_HOURS = 48
+MAX_JOB_AGE_DAYS = 7
 
 
 def remove_old(path: Path, max_age_hours: int) -> int:
@@ -35,7 +37,9 @@ def main() -> None:
     print(f"[{datetime.utcnow().isoformat()}] Starting cleanup")
     temp_removed = remove_old(settings.TEMP_DIR / "jobs", MAX_AGE_HOURS)
     export_removed = remove_old(settings.DATA_DIR / "exports", MAX_AGE_HOURS * 7)
-    print(f"Removed {temp_removed} temp dirs and {export_removed} old exports")
+    cutoff = (datetime.utcnow() - timedelta(days=MAX_JOB_AGE_DAYS)).isoformat()
+    jobs_removed = delete_old_jobs(cutoff)
+    print(f"Removed {temp_removed} temp dirs, {export_removed} old exports and {jobs_removed} stale jobs")
 
 
 if __name__ == "__main__":

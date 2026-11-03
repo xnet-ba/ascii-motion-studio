@@ -38,6 +38,8 @@ class AnimationRenderRequest(BaseModel):
     denoise: bool = False
     quantize: int = Field(default=0, ge=0, le=64)
     contrast_adapt: bool = False
+    color_mapping: str = "auto"
+    fg_color: Optional[Tuple[int, int, int]] = None
     max_duration: int = Field(default=20, ge=1, le=60)
     reverse: bool = False
     start_time: float = Field(default=0.0, ge=0.0)
