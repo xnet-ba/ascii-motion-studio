@@ -19,6 +19,9 @@ app = FastAPI(
     description="Professional ASCII Image, Video and Animation Generator",
     version="0.1.0",
     lifespan=lifespan,
+    openapi_url="/api/v1/openapi.json",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
 )
 
 app.add_middleware(

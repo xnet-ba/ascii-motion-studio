@@ -1,0 +1,13 @@
+/var/log/ascii-motion-studio/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0644 sha sha
+    sharedscripts
+    postrotate
+        /bin/kill -HUP $(cat /run/systemd/journal/syslog.pid 2>/dev/null) 2>/dev/null || true
+    endscript
+}
