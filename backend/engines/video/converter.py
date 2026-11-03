@@ -41,10 +41,14 @@ def get_video_duration(path: Path) -> float:
 
 def extract_frames(input_path: Path, out_dir: Path, fps: int,
                    max_frames: int, max_duration: int,
-                   max_width: int = 960, max_height: int = 540) -> Tuple[int, int]:
+                   max_width: int = 960, max_height: int = 540,
+                   start_time: float = 0.0, end_time: Optional[float] = None) -> Tuple[int, int]:
     out_dir.mkdir(parents=True, exist_ok=True)
     duration = get_video_duration(input_path)
-    effective_duration = min(duration, max_duration)
+    effective_start = max(0.0, start_time)
+    effective_end = min(duration, end_time) if end_time else duration
+    effective_end = max(effective_start, effective_end)
+    effective_duration = min(effective_end - effective_start, max_duration)
     total_frames = min(int(effective_duration * fps), max_frames)
 
     # Scale filter: preserve aspect, fit within max box
@@ -53,6 +57,7 @@ def extract_frames(input_path: Path, out_dir: Path, fps: int,
     cmd = [
         settings.FFMPEG_PATH,
         "-y",
+        "-ss", str(effective_start),
         "-i", str(input_path),
         "-vf", f"fps={fps},{scale_filter}",
         "-frames:v", str(total_frames),
@@ -63,28 +68,72 @@ def extract_frames(input_path: Path, out_dir: Path, fps: int,
     return total_frames, fps
 
 
+def interpolate_frames(frame_paths: list, factor: int = 1) -> list:
+    """Blend adjacent frames to create intermediate frames."""
+    if factor <= 0 or len(frame_paths) < 2:
+        return frame_paths
+    result = []
+    for i in range(len(frame_paths) - 1):
+        result.append(frame_paths[i])
+        a = Image.open(frame_paths[i]).convert("RGBA")
+        b = Image.open(frame_paths[i + 1]).convert("RGBA")
+        for step in range(1, factor + 1):
+            alpha = step / (factor + 1)
+            blended = Image.blend(a, b, alpha)
+            tmp = frame_paths[i].parent / f"interp_{i}_{step}.png"
+            blended.save(tmp)
+            result.append(tmp)
+    result.append(frame_paths[-1])
+    return result
+
+
+def deduplicate_frames(frame_paths: list, threshold: int = 2) -> list:
+    """Drop frames that are nearly identical to the previous one."""
+    if not frame_paths:
+        return []
+    kept = [frame_paths[0]]
+    prev = Image.open(frame_paths[0]).convert("RGB")
+    for fp in frame_paths[1:]:
+        cur = Image.open(fp).convert("RGB")
+        diff = sum(abs(p - c) for p, c in zip(prev.histogram(), cur.histogram()))
+        if diff > threshold * prev.width * prev.height:
+            kept.append(fp)
+            prev = cur
+    return kept
+
+
 def render_video(input_path: Path, output_path: Path, options: RenderOptions,
                  fps: int = 15, max_duration: int = 20, max_frames: int = 300,
                  output_format: str = "mp4", job_id: Optional[int] = None,
-                 effects: Optional[list] = None) -> dict:
+                 effects: Optional[list] = None,
+                 reverse: bool = False,
+                 start_time: float = 0.0,
+                 end_time: Optional[float] = None,
+                 loop: int = 0,
+                 interpolate: bool = False) -> dict:
     from engines.ascii.renderer import render_ascii
 
     work_dir = Path(str(output_path)).parent / f"frames_{job_id or 'x'}"
     work_dir.mkdir(parents=True, exist_ok=True)
 
     total_frames, actual_fps = extract_frames(
-        input_path, work_dir, fps, max_frames, max_duration
+        input_path, work_dir, fps, max_frames, max_duration,
+        start_time=start_time, end_time=end_time
     )
+
+    raw_frames = sorted(work_dir.glob("frame_*.png"))
+    if interpolate:
+        raw_frames = interpolate_frames(raw_frames, factor=1)
+        total_frames = len(raw_frames)
+    if reverse:
+        raw_frames = list(reversed(raw_frames))
 
     ascii_dir = work_dir / "ascii"
     ascii_dir.mkdir(parents=True, exist_ok=True)
 
     effects = effects or []
 
-    for i in range(1, total_frames + 1):
-        frame_path = work_dir / f"frame_{i:05d}.png"
-        if not frame_path.exists():
-            break
+    for i, frame_path in enumerate(raw_frames, start=1):
         img = Image.open(frame_path)
         grid = render_ascii(img, options)
         if effects:
@@ -99,13 +148,20 @@ def render_video(input_path: Path, output_path: Path, options: RenderOptions,
     # Assemble output
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if output_format == "gif":
+        # Optimized GIF: smaller palette, diff mode, transparency where possible
+        vf = (
+            "split[s0][s1];"
+            "[s0]palettegen=max_colors=32[p];"
+            "[s1][p]paletteuse=dither=bayer:diff_mode=rectangle"
+        )
         cmd = [
             settings.FFMPEG_PATH,
             "-y",
             "-framerate", str(actual_fps),
             "-i", str(ascii_dir / "ascii_%05d.png"),
-            "-vf", "split[s0][s1];[s0]palettegen=max_colors=64[p];[s1][p]paletteuse=dither=bayer",
-            "-loop", "0",
+            "-vf", vf,
+            "-loop", str(loop),
+            "-gifflags", "-offsetting",
             str(output_path),
         ]
     elif output_format == "webm":

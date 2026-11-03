@@ -1,0 +1,8 @@
+[Unit]
+Description=ASCII Motion Studio health check
+
+[Service]
+Type=oneshot
+User=sha
+Group=sha
+ExecStart=/opt/ascii-motion-studio/backend/venv/bin/python /opt/ascii-motion-studio/scripts/health_check.py

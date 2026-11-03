@@ -186,6 +186,83 @@ def apply_color_shift(grid: ASCIIGrid, frame: int, total_frames: int,
     return g
 
 
+def apply_zoom(grid: ASCIIGrid, frame: int, total_frames: int,
+               intensity: float = 0.3) -> ASCIIGrid:
+    """Crop toward center to simulate zoom in/out."""
+    g = clone_grid(grid)
+    t = frame / max(1, total_frames - 1)
+    zoom = intensity * math.sin(t * math.pi * 2)
+    crop_x = int(abs(zoom) * g.width * 0.25)
+    crop_y = int(abs(zoom) * g.height * 0.25)
+    new_h = max(1, g.height - 2 * crop_y)
+    new_w = max(1, g.width - 2 * crop_x)
+    new_chars = []
+    new_colors = []
+    for y in range(crop_y, crop_y + new_h):
+        row_c = []
+        row_col = []
+        for x in range(crop_x, crop_x + new_w):
+            row_c.append(g.chars[y % g.height][x % g.width])
+            row_col.append(g.colors[y % g.height][x % g.width])
+        new_chars.append(row_c)
+        new_colors.append(row_col)
+    # Scale back to original size via nearest-neighbor replication
+    out_chars = []
+    out_colors = []
+    for y in range(g.height):
+        src_y = int(y * new_h / g.height)
+        row_c = []
+        row_col = []
+        for x in range(g.width):
+            src_x = int(x * new_w / g.width)
+            row_c.append(new_chars[src_y][src_x])
+            row_col.append(new_colors[src_y][src_x])
+        out_chars.append(row_c)
+        out_colors.append(row_col)
+    g.chars = out_chars
+    g.colors = out_colors
+    return g
+
+
+def apply_rotation(grid: ASCIIGrid, frame: int, total_frames: int,
+                   intensity: float = 0.2) -> ASCIIGrid:
+    """Simple horizontal skew to suggest rotation."""
+    g = clone_grid(grid)
+    t = frame / max(1, total_frames - 1)
+    angle = intensity * math.sin(t * math.pi * 2) * 0.5
+    for y in range(g.height):
+        shift = int(angle * (y - g.height / 2))
+        if shift == 0:
+            continue
+        g.chars[y] = g.chars[y][-shift:] + g.chars[y][:-shift]
+        g.colors[y] = g.colors[y][-shift:] + g.colors[y][:-shift]
+    return g
+
+
+def apply_particles(grid: ASCIIGrid, frame: int, total_frames: int,
+                    intensity: float = 0.2, seed: int = 42) -> ASCIIGrid:
+    g = clone_grid(grid)
+    rng = random.Random(seed + frame)
+    count = int(intensity * 20)
+    for _ in range(count):
+        x = rng.randint(0, g.width - 1)
+        y = rng.randint(0, g.height - 1)
+        g.chars[y][x] = rng.choice(".*+")
+        g.colors[y][x] = (255, 255, 255, 255)
+    return g
+
+
+def apply_terminal_cursor(grid: ASCIIGrid, frame: int, total_frames: int,
+                          intensity: float = 0.8) -> ASCIIGrid:
+    """Blinking block cursor at bottom-right."""
+    g = clone_grid(grid)
+    blink = (frame // max(1, total_frames // 10)) % 2 == 0
+    if blink:
+        g.chars[g.height - 1][g.width - 1] = "█"
+        g.colors[g.height - 1][g.width - 1] = (int(255 * intensity), int(255 * intensity), int(255 * intensity), 255)
+    return g
+
+
 def _rgb_to_hsv(r: int, g: int, b: int) -> Tuple[float, float, float]:
     r, g, b = r / 255.0, g / 255.0, b / 255.0
     mx = max(r, g, b)
@@ -234,6 +311,10 @@ EFFECTS = {
     "fade_in": apply_fade_in,
     "fade_out": apply_fade_out,
     "color_shift": apply_color_shift,
+    "zoom": apply_zoom,
+    "rotation": apply_rotation,
+    "particles": apply_particles,
+    "terminal_cursor": apply_terminal_cursor,
 }
 
 

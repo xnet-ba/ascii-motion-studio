@@ -32,6 +32,11 @@ class VideoConvertRequest(BaseModel):
     quantize: int = Field(default=0, ge=0, le=64)
     contrast_adapt: bool = False
     max_duration: int = Field(default=20, ge=1, le=60)
+    reverse: bool = False
+    start_time: float = Field(default=0.0, ge=0.0)
+    end_time: Optional[float] = Field(default=None, ge=0.0)
+    loop: int = Field(default=0, ge=-1, le=100)
+    interpolate: bool = False
 
     class Config:
         protected_namespaces = ()

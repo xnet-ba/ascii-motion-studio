@@ -67,6 +67,11 @@ def _process_job(job_id: int, job_type: str, payload: dict) -> None:
                 max_frames=settings.MAX_FRAMES,
                 output_format=output_format,
                 job_id=job_id,
+                reverse=payload["options"].get("reverse", False),
+                start_time=payload["options"].get("start_time", 0.0),
+                end_time=payload["options"].get("end_time"),
+                loop=payload["options"].get("loop", 0),
+                interpolate=payload["options"].get("interpolate", False),
             )
             db.update_job(job_id, status="completed", progress=1.0,
                           output_path=str(output_path),
@@ -122,6 +127,11 @@ def _process_job(job_id: int, job_type: str, payload: dict) -> None:
                     max_frames=settings.MAX_FRAMES,
                     output_format=output_format,
                     effects=effects,
+                    reverse=payload["options"].get("reverse", False),
+                    start_time=payload["options"].get("start_time", 0.0),
+                    end_time=payload["options"].get("end_time"),
+                    loop=payload["options"].get("loop", 0),
+                    interpolate=payload["options"].get("interpolate", False),
                 )
             db.update_job(job_id, status="completed", progress=1.0,
                           output_path=str(output_path),

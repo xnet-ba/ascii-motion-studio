@@ -1,0 +1,8 @@
+[Unit]
+Description=ASCII Motion Studio backup
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/opt/ascii-motion-studio/backend/venv/bin/python /opt/ascii-motion-studio/scripts/backup.py

@@ -30,6 +30,11 @@ export default function App() {
   const [contrastAdapt, setContrastAdapt] = useState(false)
   const [fps, setFps] = useState(15)
   const [maxDuration, setMaxDuration] = useState(20)
+  const [startTime, setStartTime] = useState(0)
+  const [endTime, setEndTime] = useState<number | ''>('')
+  const [loop, setLoop] = useState(0)
+  const [reverse, setReverse] = useState(false)
+  const [interpolate, setInterpolate] = useState(false)
   const [outputFormat, setOutputFormat] = useState('png')
   const [effects, setEffects] = useState<string[]>([])
   const [jobs, setJobs] = useState<any[]>([])
@@ -96,6 +101,11 @@ export default function App() {
     contrast_adapt: contrastAdapt,
     fps,
     max_duration: maxDuration,
+    start_time: startTime,
+    end_time: endTime === '' ? null : Number(endTime),
+    loop,
+    reverse,
+    interpolate,
     effects: effects.map((name) => ({ name, intensity: 0.5, speed: 1.0, direction: 'horizontal' })),
     ...extra,
   })
@@ -300,6 +310,18 @@ export default function App() {
                     {t('duration')}
                     <input type="number" min={1} max={60} value={maxDuration} onChange={(e) => setMaxDuration(Number(e.target.value))} className="w-full mt-1 p-2 bg-slate-900 border border-slate-700 rounded" />
                   </label>
+                  <label className="block">
+                    Start (s)
+                    <input type="number" min={0} value={startTime} onChange={(e) => setStartTime(Number(e.target.value))} className="w-full mt-1 p-2 bg-slate-900 border border-slate-700 rounded" />
+                  </label>
+                  <label className="block">
+                    End (s)
+                    <input type="number" min={0} placeholder="kraj" value={endTime} onChange={(e) => setEndTime(e.target.value === '' ? '' : Number(e.target.value))} className="w-full mt-1 p-2 bg-slate-900 border border-slate-700 rounded" />
+                  </label>
+                  <label className="block">
+                    Loop (-1 = ∞)
+                    <input type="number" min={-1} max={100} value={loop} onChange={(e) => setLoop(Number(e.target.value))} className="w-full mt-1 p-2 bg-slate-900 border border-slate-700 rounded" />
+                  </label>
                 </>
               )}
               <label className="block">
@@ -335,11 +357,23 @@ export default function App() {
               <input type="checkbox" checked={contrastAdapt} onChange={(e) => setContrastAdapt(e.target.checked)} />
               {t('contrastAdapt')}
             </label>
+            {section !== 'imageToAscii' && (
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={reverse} onChange={(e) => setReverse(e.target.checked)} />
+                  Reverse
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={interpolate} onChange={(e) => setInterpolate(e.target.checked)} />
+                  Interpolate
+                </label>
+              </div>
+            )}
             {section === 'animation' && (
               <div className="p-3 bg-slate-900 border border-slate-700 rounded">
                 <p className="text-sm font-medium mb-2">Efekti</p>
                 <div className="flex flex-wrap gap-2">
-                  {['pulse', 'flicker', 'scan', 'glitch', 'matrix', 'wave', 'noise', 'fade_in', 'fade_out', 'color_shift'].map((eff) => (
+                  {['pulse', 'flicker', 'scan', 'glitch', 'matrix', 'wave', 'noise', 'fade_in', 'fade_out', 'color_shift', 'zoom', 'rotation', 'particles', 'terminal_cursor'].map((eff) => (
                     <button
                       key={eff}
                       onClick={() => toggleEffect(eff)}
