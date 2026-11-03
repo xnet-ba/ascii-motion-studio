@@ -180,7 +180,7 @@ sudo systemctl restart ascii-motion-api ascii-motion-worker
 
 ## 12. Known limitations / not finished
 
-- Advanced GIF optimization (frame deduplication, disposal methods) is basic.
+- GIF frame deduplication is implemented; disposal methods remain basic.
 - Worker currently shares the same SQLite file; fine for single-server load, may need queue migration if scaled horizontally.
 - Audio track preservation in video export is not implemented.
 

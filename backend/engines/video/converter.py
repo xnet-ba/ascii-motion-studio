@@ -87,16 +87,18 @@ def interpolate_frames(frame_paths: list, factor: int = 1) -> list:
     return result
 
 
-def deduplicate_frames(frame_paths: list, threshold: int = 2) -> list:
+def deduplicate_frames(frame_paths: list, threshold: int = 8) -> list:
     """Drop frames that are nearly identical to the previous one."""
+    from PIL import ImageChops
     if not frame_paths:
         return []
     kept = [frame_paths[0]]
     prev = Image.open(frame_paths[0]).convert("RGB")
     for fp in frame_paths[1:]:
         cur = Image.open(fp).convert("RGB")
-        diff = sum(abs(p - c) for p, c in zip(prev.histogram(), cur.histogram()))
-        if diff > threshold * prev.width * prev.height:
+        diff = ImageChops.difference(prev, cur)
+        extrema = diff.getextrema()
+        if max(max(band) for band in extrema) > threshold:
             kept.append(fp)
             prev = cur
     return kept
@@ -124,9 +126,10 @@ def render_video(input_path: Path, output_path: Path, options: RenderOptions,
     raw_frames = sorted(work_dir.glob("frame_*.png"))
     if interpolate:
         raw_frames = interpolate_frames(raw_frames, factor=1)
-        total_frames = len(raw_frames)
     if reverse:
         raw_frames = list(reversed(raw_frames))
+    raw_frames = deduplicate_frames(raw_frames, threshold=2)
+    total_frames = len(raw_frames)
 
     ascii_dir = work_dir / "ascii"
     ascii_dir.mkdir(parents=True, exist_ok=True)

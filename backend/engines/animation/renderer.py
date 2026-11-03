@@ -6,7 +6,7 @@ from core.config import settings
 from engines.ascii.renderer import RenderOptions, render_ascii
 from engines.animation.effects import apply_effects
 from engines.image.converter import render_grid_to_image
-from engines.video.converter import _run, extract_frames, interpolate_frames
+from engines.video.converter import _run, extract_frames, interpolate_frames, deduplicate_frames
 
 
 def render_animation(input_path: Path, output_path: Path, options: RenderOptions,
@@ -49,6 +49,7 @@ def render_animation(input_path: Path, output_path: Path, options: RenderOptions
         raw_frames = interpolate_frames(raw_frames, factor=1)
     if reverse:
         raw_frames = list(reversed(raw_frames))
+    raw_frames = deduplicate_frames(raw_frames, threshold=2)
     total_frames = len(raw_frames)
 
     ascii_dir = work_dir / "ascii"
