@@ -1,6 +1,6 @@
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 from core.config import settings
@@ -52,7 +52,7 @@ def init_db() -> None:
 
 def create_project(name: str, project_settings: dict, source_type: Optional[str] = None,
                    source_path: Optional[str] = None) -> int:
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
     with get_conn() as conn:
         cur = conn.execute(
             "INSERT INTO projects (name, created_at, updated_at, settings, source_type, source_path) VALUES (?, ?, ?, ?, ?, ?)",
@@ -85,7 +85,7 @@ def delete_project(project_id: int) -> bool:
 
 
 def create_job(project_id: Optional[int], job_type: str, input_path: str) -> int:
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
     with get_conn() as conn:
         cur = conn.execute(
             "INSERT INTO jobs (project_id, type, status, progress, input_path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -106,7 +106,7 @@ def get_job(job_id: int) -> Optional[dict]:
 def update_job(job_id: int, status: Optional[str] = None, progress: Optional[float] = None,
                message: Optional[str] = None, output_path: Optional[str] = None,
                result: Optional[str] = None) -> None:
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
     fields = ["updated_at = ?"]
     params = [now]
     if status is not None:

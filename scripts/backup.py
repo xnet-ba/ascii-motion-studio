@@ -3,7 +3,7 @@
 import os
 import shutil
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 DATA_DIR = Path("/var/lib/ascii-motion-studio")
@@ -13,7 +13,7 @@ ENV_FILE = Path("/opt/ascii-motion-studio/backend/.env")
 
 def main() -> None:
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     archive = BACKUP_DIR / f"ascii-motion-{timestamp}.tar.gz"
 
     # Stop nothing; SQLite backup is quick and filesystem consistent enough.

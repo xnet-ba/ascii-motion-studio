@@ -3,7 +3,7 @@
 import shutil
 import time
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import sys
 
 sys.path.insert(0, "/opt/ascii-motion-studio/backend")
@@ -34,10 +34,10 @@ def remove_old(path: Path, max_age_hours: int) -> int:
 
 
 def main() -> None:
-    print(f"[{datetime.utcnow().isoformat()}] Starting cleanup")
+    print(f"[{datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}] Starting cleanup")
     temp_removed = remove_old(settings.TEMP_DIR / "jobs", MAX_AGE_HOURS)
     export_removed = remove_old(settings.DATA_DIR / "exports", MAX_AGE_HOURS * 7)
-    cutoff = (datetime.utcnow() - timedelta(days=MAX_JOB_AGE_DAYS)).isoformat()
+    cutoff = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=MAX_JOB_AGE_DAYS)).isoformat()
     jobs_removed = delete_old_jobs(cutoff)
     print(f"Removed {temp_removed} temp dirs, {export_removed} old exports and {jobs_removed} stale jobs")
 
