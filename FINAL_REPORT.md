@@ -181,7 +181,6 @@ sudo systemctl restart ascii-motion-api ascii-motion-worker
 ## 12. Known limitations / not finished
 
 - Advanced GIF optimization (frame deduplication, disposal methods) is basic.
-- Reduced-motion preference not yet enforced in HTML export.
 - Worker currently shares the same SQLite file; fine for single-server load, may need queue migration if scaled horizontally.
 - Audio track preservation in video export is not implemented.
 
@@ -201,6 +200,10 @@ The application meets the core completion criteria:
 - ✅ MP4 and WebM export
 - ✅ Animation effects engine (pulse, flicker, scan, glitch, matrix, wave, noise, fade_in, fade_out, color_shift, zoom, rotation, particles, terminal_cursor)
 - ✅ Reverse playback, start/end trim, loop, frame interpolation
+- ✅ Reduced-motion support in HTML export
+- ✅ Manual foreground color mapping
+- ✅ Stale job cleanup in SQLite
+- ✅ Playwright E2E test for upload/convert/download flow
 - ✅ Project save/open API
 - ✅ Documented REST API with OpenAPI
 - ✅ Systemd services running and auto-restarting
