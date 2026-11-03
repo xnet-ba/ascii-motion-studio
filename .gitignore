@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/venv/
+env/
+venv/
+ENV/
+.venv
+
+# Node
+frontend/node_modules/
+frontend/dist/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# App data
+/var/lib/ascii-motion-studio/
+/var/log/ascii-motion-studio/
+/var/tmp/ascii-motion-studio/
+uploads/
+temp/
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+build/
+dist/
+*.egg-info/

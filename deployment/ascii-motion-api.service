@@ -1,0 +1,19 @@
+[Unit]
+Description=ASCII Motion Studio API
+After=network.target
+
+[Service]
+Type=simple
+User=sha
+Group=sha
+WorkingDirectory=/opt/ascii-motion-studio/backend
+Environment=PYTHONPATH=/opt/ascii-motion-studio/backend
+EnvironmentFile=/opt/ascii-motion-studio/backend/.env
+ExecStart=/opt/ascii-motion-studio/backend/venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 8001 --workers 1
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/var/log/ascii-motion-studio/api.log
+StandardError=append:/var/log/ascii-motion-studio/api.log
+
+[Install]
+WantedBy=multi-user.target
