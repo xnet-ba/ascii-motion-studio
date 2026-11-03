@@ -77,7 +77,7 @@ All endpoints require Bearer token authentication.
 ## 6. Test results
 
 ```
-17 passed, 4 warnings in 8.29s
+19 passed, 4 warnings in 15.85s
 ```
 
 Tests cover:
@@ -96,6 +96,8 @@ Tests cover:
 13. Concurrent jobs limit
 14. Job persistence across restarts
 15. Project CRUD
+16. Animation effects (GIF)
+17. ZIP export
 
 ---
 
@@ -175,12 +177,10 @@ sudo systemctl restart ascii-motion-api ascii-motion-worker
 
 ## 12. Known limitations / not finished
 
-- Animation effects engine (pulse, glitch, matrix, etc.) is designed but not exposed in UI/API yet.
-- ZIP export is not implemented.
 - Advanced GIF optimization (frame deduplication, disposal methods) is basic.
-- Rate-limiting middleware not yet added.
 - Reduced-motion preference not yet enforced in HTML export.
 - Worker currently shares the same SQLite file; fine for single-server load, may need queue migration if scaled horizontally.
+- Zoom, rotation, particles and terminal-cursor effects are placeholders; not yet implemented.
 
 ---
 
@@ -194,7 +194,9 @@ The application meets the core completion criteria:
 - ✅ GIF generation with black background
 - ✅ Logo contours and colors preserved
 - ✅ Standalone HTML animation export
+- ✅ ZIP export package
 - ✅ MP4 and WebM export
+- ✅ Animation effects engine (pulse, flicker, scan, glitch, matrix, wave, noise, fade_in, fade_out, color_shift)
 - ✅ Project save/open API
 - ✅ Documented REST API with OpenAPI
 - ✅ Systemd services running and auto-restarting
