@@ -39,6 +39,11 @@ def get_video_duration(path: Path) -> float:
     return duration
 
 
+def has_audio_stream(path: Path) -> bool:
+    info = probe_video(path)
+    return any(s.get("codec_type") == "audio" for s in info.get("streams", []))
+
+
 def extract_frames(input_path: Path, out_dir: Path, fps: int,
                    max_frames: int, max_duration: int,
                    max_width: int = 960, max_height: int = 540,
@@ -104,6 +109,30 @@ def deduplicate_frames(frame_paths: list, threshold: int = 8) -> list:
     return kept
 
 
+def extract_audio(input_path: Path, out_path: Path, start_time: float = 0.0,
+                  end_time: Optional[float] = None) -> None:
+    """Extract audio stream from input, optionally trimmed."""
+    cmd = [settings.FFMPEG_PATH, "-y", "-ss", str(start_time)]
+    if end_time is not None:
+        cmd += ["-to", str(end_time)]
+    cmd += ["-i", str(input_path), "-vn", "-acodec", "copy", str(out_path)]
+    _run(cmd, timeout=60)
+
+
+def mux_audio(video_path: Path, audio_path: Path, output_path: Path) -> None:
+    """Mux extracted audio with rendered video."""
+    cmd = [
+        settings.FFMPEG_PATH, "-y",
+        "-i", str(video_path),
+        "-i", str(audio_path),
+        "-c:v", "copy",
+        "-c:a", "copy",
+        "-shortest",
+        str(output_path),
+    ]
+    _run(cmd, timeout=120)
+
+
 def render_video(input_path: Path, output_path: Path, options: RenderOptions,
                  fps: int = 15, max_duration: int = 20, max_frames: int = 300,
                  output_format: str = "mp4", job_id: Optional[int] = None,
@@ -112,7 +141,8 @@ def render_video(input_path: Path, output_path: Path, options: RenderOptions,
                  start_time: float = 0.0,
                  end_time: Optional[float] = None,
                  loop: int = 0,
-                 interpolate: bool = False) -> dict:
+                 interpolate: bool = False,
+                 preserve_audio: bool = False) -> dict:
     from engines.ascii.renderer import render_ascii
 
     work_dir = Path(str(output_path)).parent / f"frames_{job_id or 'x'}"
@@ -150,6 +180,7 @@ def render_video(input_path: Path, output_path: Path, options: RenderOptions,
 
     # Assemble output
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_video_path = work_dir / f"video.{output_format}"
     if output_format == "gif":
         # Optimized GIF: smaller palette, diff mode, transparency where possible
         vf = (
@@ -176,7 +207,7 @@ def render_video(input_path: Path, output_path: Path, options: RenderOptions,
             "-c:v", "libvpx-vp9",
             "-b:v", "1M",
             "-pix_fmt", "yuva420p",
-            str(output_path),
+            str(temp_video_path),
         ]
     else:  # mp4
         cmd = [
@@ -187,9 +218,16 @@ def render_video(input_path: Path, output_path: Path, options: RenderOptions,
             "-c:v", "libx264",
             "-pix_fmt", "yuv420p",
             "-movflags", "+faststart",
-            str(output_path),
+            str(temp_video_path),
         ]
     _run(cmd, timeout=max(120, total_frames * 3))
+
+    if output_format != "gif" and preserve_audio and has_audio_stream(input_path):
+        audio_path = work_dir / "audio.m4a"
+        extract_audio(input_path, audio_path, start_time=start_time, end_time=end_time)
+        mux_audio(temp_video_path, audio_path, output_path)
+    elif output_format != "gif":
+        temp_video_path.replace(output_path)
 
     return {
         "frames": total_frames,

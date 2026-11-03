@@ -75,6 +75,7 @@ def _process_job(job_id: int, job_type: str, payload: dict) -> None:
                 end_time=payload["options"].get("end_time"),
                 loop=payload["options"].get("loop", 0),
                 interpolate=payload["options"].get("interpolate", False),
+                preserve_audio=payload["options"].get("preserve_audio", False),
             )
             db.update_job(job_id, status="completed", progress=1.0,
                           output_path=str(output_path),
@@ -137,6 +138,7 @@ def _process_job(job_id: int, job_type: str, payload: dict) -> None:
                     end_time=payload["options"].get("end_time"),
                     loop=payload["options"].get("loop", 0),
                     interpolate=payload["options"].get("interpolate", False),
+                    preserve_audio=payload["options"].get("preserve_audio", False),
                 )
             db.update_job(job_id, status="completed", progress=1.0,
                           output_path=str(output_path),

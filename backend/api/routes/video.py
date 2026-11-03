@@ -39,6 +39,7 @@ class VideoConvertRequest(BaseModel):
     end_time: Optional[float] = Field(default=None, ge=0.0)
     loop: int = Field(default=0, ge=-1, le=100)
     interpolate: bool = False
+    preserve_audio: bool = False
 
     class Config:
         protected_namespaces = ()

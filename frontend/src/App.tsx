@@ -39,6 +39,7 @@ export default function App() {
   const [colorMapping, setColorMapping] = useState('auto')
   const [fgColor, setFgColor] = useState('#00ff00')
   const [reducedMotion, setReducedMotion] = useState(false)
+  const [preserveAudio, setPreserveAudio] = useState(false)
   const [outputFormat, setOutputFormat] = useState('png')
   const [effects, setEffects] = useState<string[]>([])
   const [jobs, setJobs] = useState<any[]>([])
@@ -120,6 +121,7 @@ export default function App() {
     color_mapping: colorMapping,
     fg_color: colorMapping === 'manual' ? hexToRgb(fgColor) : null,
     reduced_motion: reducedMotion,
+    preserve_audio: preserveAudio,
     effects: effects.map((name) => ({ name, intensity: 0.5, speed: 1.0, direction: 'horizontal' })),
     ...extra,
   })
@@ -399,6 +401,12 @@ export default function App() {
                   <label className="flex items-center gap-2">
                     <input type="checkbox" checked={reducedMotion} onChange={(e) => setReducedMotion(e.target.checked)} />
                     Reduced motion
+                  </label>
+                )}
+                {(outputFormat === 'mp4' || outputFormat === 'webm') && (
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={preserveAudio} onChange={(e) => setPreserveAudio(e.target.checked)} />
+                    Preserve audio
                   </label>
                 )}
               </div>

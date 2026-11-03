@@ -6,7 +6,10 @@ from core.config import settings
 from engines.ascii.renderer import RenderOptions, render_ascii
 from engines.animation.effects import apply_effects
 from engines.image.converter import render_grid_to_image
-from engines.video.converter import _run, extract_frames, interpolate_frames, deduplicate_frames
+from engines.video.converter import (
+    _run, extract_frames, interpolate_frames, deduplicate_frames,
+    extract_audio, mux_audio, has_audio_stream,
+)
 
 
 def render_animation(input_path: Path, output_path: Path, options: RenderOptions,
@@ -14,10 +17,12 @@ def render_animation(input_path: Path, output_path: Path, options: RenderOptions
                      output_format: str = "gif", effects: Optional[list] = None,
                      reverse: bool = False, start_time: float = 0.0,
                      end_time: Optional[float] = None, loop: int = 0,
-                     interpolate: bool = False) -> dict:
+                     interpolate: bool = False,
+                     preserve_audio: bool = False) -> dict:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     work_dir = output_path.parent / f"anim_{output_path.stem}"
     work_dir.mkdir(parents=True, exist_ok=True)
+    temp_video_path = work_dir / f"video.{output_format}"
 
     effects = effects or []
 
@@ -49,7 +54,7 @@ def render_animation(input_path: Path, output_path: Path, options: RenderOptions
         raw_frames = interpolate_frames(raw_frames, factor=1)
     if reverse:
         raw_frames = list(reversed(raw_frames))
-    raw_frames = deduplicate_frames(raw_frames, threshold=2)
+    raw_frames = deduplicate_frames(raw_frames, threshold=8)
     total_frames = len(raw_frames)
 
     ascii_dir = work_dir / "ascii"
@@ -93,9 +98,16 @@ def render_animation(input_path: Path, output_path: Path, options: RenderOptions
             "-framerate", str(actual_fps),
             "-i", str(ascii_dir / "ascii_%05d.png"),
             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-            str(output_path),
+            str(temp_video_path),
         ]
     _run(cmd, timeout=max(120, total_frames * 3))
+
+    if output_format != "gif" and preserve_audio and suffix in video_suffixes and has_audio_stream(input_path):
+        audio_path = work_dir / "audio.m4a"
+        extract_audio(input_path, audio_path, start_time=start_time, end_time=end_time)
+        mux_audio(temp_video_path, audio_path, output_path)
+    elif output_format != "gif":
+        temp_video_path.replace(output_path)
 
     return {
         "frames": total_frames,

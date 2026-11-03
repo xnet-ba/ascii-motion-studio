@@ -175,6 +175,26 @@ class TestVideoConversion:
         result = render_video(src, out, opts, fps=5, max_duration=2, max_frames=20, output_format="webm")
         assert out.exists()
 
+    def test_mp4_to_ascii_mp4_with_audio(self, tmp_root):
+        src = tmp_root / "vid.mp4"
+        out = tmp_root / "out.mp4"
+        subprocess.run([
+            "ffmpeg", "-y", "-f", "lavfi", "-i",
+            "testsrc=duration=2:size=200x200:rate=5",
+            "-f", "lavfi", "-i", "sine=frequency=1000:duration=2",
+            "-pix_fmt", "yuv420p", "-shortest", str(src),
+        ], check=True, capture_output=True, timeout=30)
+        opts = RenderOptions(width=40, mode="grayscale", background="black")
+        result = render_video(src, out, opts, fps=5, max_duration=2, max_frames=20,
+                              output_format="mp4", preserve_audio=True)
+        assert out.exists()
+        # Verify audio stream preserved
+        probe = json.loads(subprocess.run([
+            "ffprobe", "-v", "error", "-print_format", "json",
+            "-show_streams", str(out),
+        ], check=True, capture_output=True, text=True, timeout=30).stdout)
+        assert any(s.get("codec_type") == "audio" for s in probe.get("streams", []))
+
     def test_png_to_html_animation(self, tmp_root):
         # Treat single image as 1-frame animation via short video
         src = tmp_root / "vid.mp4"
