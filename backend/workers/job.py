@@ -8,7 +8,9 @@ from core.config import settings
 from storage import db
 from engines.image.converter import convert_image
 from engines.video.converter import render_video
+from engines.animation.renderer import render_animation
 from engines.export.web import render_web_animation
+from engines.export.zip import render_zip_package
 from engines.ascii.renderer import RenderOptions
 
 _executor: Optional[ThreadPoolExecutor] = None
@@ -71,6 +73,7 @@ def _process_job(job_id: int, job_type: str, payload: dict) -> None:
                           result=json.dumps(result))
         elif job_type == "export":
             export_type = payload["options"].get("export_type", "html")
+            effects = payload["options"].get("effects", [])
             if export_type == "html":
                 output_path = settings.DATA_DIR / "exports" / f"{job_id}.html"
                 fps = payload["options"].get("fps", 15)
@@ -79,12 +82,50 @@ def _process_job(job_id: int, job_type: str, payload: dict) -> None:
                     input_path, output_path, opts,
                     fps=fps, max_duration=max_duration,
                     max_frames=settings.MAX_FRAMES,
+                    effects=effects,
+                )
+                db.update_job(job_id, status="completed", progress=1.0,
+                              output_path=str(output_path),
+                              result=json.dumps(result))
+            elif export_type == "zip":
+                output_path = settings.DATA_DIR / "exports" / f"{job_id}.zip"
+                fps = payload["options"].get("fps", 15)
+                max_duration = payload["options"].get("max_duration", 20)
+                result = render_zip_package(
+                    input_path, output_path, opts,
+                    fps=fps, max_duration=max_duration,
+                    max_frames=settings.MAX_FRAMES,
+                    effects=effects,
                 )
                 db.update_job(job_id, status="completed", progress=1.0,
                               output_path=str(output_path),
                               result=json.dumps(result))
             else:
                 raise ValueError(f"Unsupported export type: {export_type}")
+        elif job_type == "animation":
+            output_format = payload["options"].get("output_format", "gif")
+            output_path = settings.DATA_DIR / "exports" / f"{job_id}.{output_format}"
+            fps = payload["options"].get("fps", 15)
+            max_duration = payload["options"].get("max_duration", 20)
+            effects = payload["options"].get("effects", [])
+            if output_format == "html":
+                result = render_web_animation(
+                    input_path, output_path, opts,
+                    fps=fps, max_duration=max_duration,
+                    max_frames=settings.MAX_FRAMES,
+                    effects=effects,
+                )
+            else:
+                result = render_animation(
+                    input_path, output_path, opts,
+                    fps=fps, max_duration=max_duration,
+                    max_frames=settings.MAX_FRAMES,
+                    output_format=output_format,
+                    effects=effects,
+                )
+            db.update_job(job_id, status="completed", progress=1.0,
+                          output_path=str(output_path),
+                          result=json.dumps(result))
         else:
             raise ValueError(f"Unknown job type: {job_type}")
     except Exception as e:

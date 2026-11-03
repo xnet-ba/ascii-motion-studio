@@ -9,6 +9,7 @@ const resources = {
       upload: 'Učitaj datoteku',
       imageToAscii: 'Slika u ASCII',
       videoToAscii: 'Video u ASCII',
+      animation: 'Animacija',
       projects: 'Projekti',
       jobs: 'Poslovi',
       settings: 'Postavke',

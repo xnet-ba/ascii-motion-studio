@@ -8,15 +8,21 @@ from core.config import settings
 from engines.ascii.renderer import RenderOptions, render_ascii
 from engines.video.converter import extract_frames
 from engines.image.converter import render_grid_to_image
+from engines.animation.effects import apply_effects
 
 
-def _encode_frames(frames_dir: Path, options: RenderOptions, max_frames: int = 60) -> list:
+def _encode_frames(frames_dir: Path, options: RenderOptions, max_frames: int = 60,
+                  effects: Optional[list] = None) -> list:
     """Encode ASCII frames into compact JSON-serializable structure."""
     encoded = []
     frame_files = sorted(frames_dir.glob("frame_*.png"))[:max_frames]
-    for fp in frame_files:
+    total = len(frame_files)
+    effects = effects or []
+    for idx, fp in enumerate(frame_files):
         img = Image.open(fp)
         grid = render_ascii(img, options)
+        if effects:
+            grid = apply_effects(grid, idx, total, effects)
         # Compact: chars as string, colors as base64 rgba bytes
         chars = "\n".join("".join(row) for row in grid.chars)
         colors = []
@@ -28,7 +34,7 @@ def _encode_frames(frames_dir: Path, options: RenderOptions, max_frames: int = 6
 
 def render_web_animation(input_path: Path, output_path: Path, options: RenderOptions,
                          fps: int = 15, max_duration: int = 10,
-                         max_frames: int = 60) -> dict:
+                         max_frames: int = 60, effects: Optional[list] = None) -> dict:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     work_dir = output_path.parent / f"web_{output_path.stem}"
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -36,7 +42,8 @@ def render_web_animation(input_path: Path, output_path: Path, options: RenderOpt
     total_frames, actual_fps = extract_frames(
         input_path, work_dir, fps, max_frames, max_duration
     )
-    frames = _encode_frames(work_dir, options, max_frames=max_frames)
+    effects = effects or []
+    frames = _encode_frames(work_dir, options, max_frames=max_frames, effects=effects)
 
     bg = "#000000"
     if options.background == "white":

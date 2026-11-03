@@ -1,13 +1,20 @@
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from core.security import verify_token
 from core.config import settings
 from storage import db
 from workers.job import enqueue_job
 
 router = APIRouter()
+
+
+class Effect(BaseModel):
+    name: str
+    intensity: float = Field(default=0.5, ge=0.0, le=1.0)
+    speed: float = Field(default=1.0, ge=0.1, le=5.0)
+    direction: str = "horizontal"
 
 
 class ExportRequest(BaseModel):
@@ -32,6 +39,7 @@ class ExportRequest(BaseModel):
     quantize: int = Field(default=0, ge=0, le=64)
     contrast_adapt: bool = False
     max_duration: int = Field(default=20, ge=1, le=60)
+    effects: List[Effect] = []
 
     class Config:
         protected_namespaces = ()
@@ -53,7 +61,4 @@ async def export_media(payload: ExportRequest, token: str = Depends(verify_token
     return {"job_id": job_id, "status": "pending"}
 
 
-@router.post("/animation/render")
-async def render_animation(payload: ExportRequest, token: str = Depends(verify_token)):
-    payload.export_type = "html"
-    return await export_media(payload, token)
+

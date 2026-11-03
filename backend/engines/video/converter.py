@@ -6,6 +6,7 @@ from PIL import Image
 from core.config import settings
 from engines.ascii.renderer import RenderOptions
 from engines.image.converter import render_grid_to_image
+from engines.animation.effects import apply_effects
 from storage.db import update_job
 
 
@@ -64,7 +65,8 @@ def extract_frames(input_path: Path, out_dir: Path, fps: int,
 
 def render_video(input_path: Path, output_path: Path, options: RenderOptions,
                  fps: int = 15, max_duration: int = 20, max_frames: int = 300,
-                 output_format: str = "mp4", job_id: Optional[int] = None) -> dict:
+                 output_format: str = "mp4", job_id: Optional[int] = None,
+                 effects: Optional[list] = None) -> dict:
     from engines.ascii.renderer import render_ascii
 
     work_dir = Path(str(output_path)).parent / f"frames_{job_id or 'x'}"
@@ -77,12 +79,16 @@ def render_video(input_path: Path, output_path: Path, options: RenderOptions,
     ascii_dir = work_dir / "ascii"
     ascii_dir.mkdir(parents=True, exist_ok=True)
 
+    effects = effects or []
+
     for i in range(1, total_frames + 1):
         frame_path = work_dir / f"frame_{i:05d}.png"
         if not frame_path.exists():
             break
         img = Image.open(frame_path)
         grid = render_ascii(img, options)
+        if effects:
+            grid = apply_effects(grid, i - 1, total_frames, effects)
         out_img = render_grid_to_image(grid, options, font_size=12)
         out_img.save(ascii_dir / f"ascii_{i:05d}.png")
 

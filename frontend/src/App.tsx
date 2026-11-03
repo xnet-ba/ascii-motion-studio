@@ -1,23 +1,25 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
-import { Upload, Image as ImageIcon, Film, Folder, Download, Loader2 } from 'lucide-react'
-
-const API = axios.create({
-  baseURL: '/api/v1',
-  headers: { Authorization: 'Bearer ams-demo-token-2026' },
-})
+import { getClient } from './api'
+import {
+  Upload, Image as ImageIcon, Film, Folder, Download, Loader2, Settings,
+  Sparkles
+} from 'lucide-react'
 
 const SECTIONS = [
   { key: 'upload', icon: Upload },
   { key: 'imageToAscii', icon: ImageIcon },
   { key: 'videoToAscii', icon: Film },
+  { key: 'animation', icon: Sparkles },
   { key: 'projects', icon: Folder },
   { key: 'jobs', icon: Loader2 },
+  { key: 'settings', icon: Settings },
 ]
 
 export default function App() {
   const { t } = useTranslation()
+  const [api, setApi] = useState(getClient)
+  const [token, setToken] = useState(localStorage.getItem('ams_token') || '')
   const [section, setSection] = useState('upload')
   const [file, setFile] = useState<File | null>(null)
   const [uploaded, setUploaded] = useState<any>(null)
@@ -29,34 +31,42 @@ export default function App() {
   const [fps, setFps] = useState(15)
   const [maxDuration, setMaxDuration] = useState(20)
   const [outputFormat, setOutputFormat] = useState('png')
+  const [effects, setEffects] = useState<string[]>([])
   const [jobs, setJobs] = useState<any[]>([])
   const [projects, setProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => {
+    setApi(getClient())
+  }, [token])
+
+  useEffect(() => {
     fetchJobs()
     fetchProjects()
     const interval = setInterval(fetchJobs, 3000)
     return () => clearInterval(interval)
-  }, [])
+  }, [api])
+
+  const saveToken = (val: string) => {
+    setToken(val)
+    localStorage.setItem('ams_token', val)
+  }
 
   const fetchJobs = async () => {
     try {
-      const { data } = await API.get('/jobs?limit=20')
+      const { data } = await api.get('/jobs?limit=20')
       setJobs(data.jobs)
-    } catch (e) {
-      // ignore
+    } catch (e: any) {
+      if (e.response?.status === 401) setMessage('Neispravan API token.')
     }
   }
 
   const fetchProjects = async () => {
     try {
-      const { data } = await API.get('/projects')
+      const { data } = await api.get('/projects')
       setProjects(data.projects)
-    } catch (e) {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }
 
   const handleUpload = async () => {
@@ -66,7 +76,7 @@ export default function App() {
     const form = new FormData()
     form.append('file', file)
     try {
-      const { data } = await API.post('/upload', form, {
+      const { data } = await api.post('/upload', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       setUploaded(data)
@@ -77,6 +87,19 @@ export default function App() {
     setLoading(false)
   }
 
+  const buildPayload = (extra: any = {}) => ({
+    input_path: uploaded?.path,
+    width,
+    mode,
+    palette,
+    background,
+    contrast_adapt: contrastAdapt,
+    fps,
+    max_duration: maxDuration,
+    effects: effects.map((name) => ({ name, intensity: 0.5, speed: 1.0, direction: 'horizontal' })),
+    ...extra,
+  })
+
   const handleImageConvert = async () => {
     if (!uploaded || uploaded.type !== 'image') {
       setMessage('Prvo učitajte sliku.')
@@ -84,15 +107,7 @@ export default function App() {
     }
     setLoading(true)
     try {
-      const { data } = await API.post('/image/convert', {
-        input_path: uploaded.path,
-        width,
-        mode,
-        palette,
-        background,
-        contrast_adapt: contrastAdapt,
-        output_format: outputFormat,
-      })
+      const { data } = await api.post('/image/convert', buildPayload({ output_format: outputFormat }))
       setMessage(`Posao pokrenut: #${data.job_id}`)
     } catch (e: any) {
       setMessage(e.response?.data?.detail || 'Greška')
@@ -107,18 +122,40 @@ export default function App() {
     }
     setLoading(true)
     try {
-      const { data } = await API.post('/video/convert', {
-        input_path: uploaded.path,
-        output_format: outputFormat === 'png' ? 'gif' : outputFormat,
-        fps,
-        width,
-        mode,
-        palette,
-        background,
-        contrast_adapt: contrastAdapt,
-        max_duration: maxDuration,
-      })
+      const fmt = outputFormat === 'png' ? 'gif' : outputFormat
+      const { data } = await api.post('/video/convert', buildPayload({ output_format: fmt }))
       setMessage(`Posao pokrenut: #${data.job_id}`)
+    } catch (e: any) {
+      setMessage(e.response?.data?.detail || 'Greška')
+    }
+    setLoading(false)
+  }
+
+  const handleAnimationRender = async () => {
+    if (!uploaded) {
+      setMessage('Prvo učitajte datoteku.')
+      return
+    }
+    setLoading(true)
+    try {
+      const fmt = section === 'animation' ? (outputFormat === 'png' ? 'gif' : outputFormat) : 'gif'
+      const { data } = await api.post('/animation/render', buildPayload({ output_format: fmt }))
+      setMessage(`Animacija pokrenuta: #${data.job_id}`)
+    } catch (e: any) {
+      setMessage(e.response?.data?.detail || 'Greška')
+    }
+    setLoading(false)
+  }
+
+  const handleExport = async () => {
+    if (!uploaded) {
+      setMessage('Prvo učitajte datoteku.')
+      return
+    }
+    setLoading(true)
+    try {
+      const { data } = await api.post('/export', buildPayload({ export_type: outputFormat }))
+      setMessage(`Export pokrenut: #${data.job_id}`)
     } catch (e: any) {
       setMessage(e.response?.data?.detail || 'Greška')
     }
@@ -128,7 +165,7 @@ export default function App() {
   const createProject = async () => {
     if (!uploaded) return
     try {
-      const { data } = await API.post('/projects', {
+      const { data } = await api.post('/projects', {
         name: uploaded.filename,
         settings: { width, mode, palette, background },
         source_type: uploaded.type,
@@ -154,13 +191,20 @@ export default function App() {
     if (ext === 'html') {
       return <a href={url} target="_blank" rel="noreferrer" className="text-blue-400 underline">Otvori HTML</a>
     }
+    if (ext === 'zip') {
+      return <a href={url} download className="text-blue-400 underline">Preuzmi ZIP</a>
+    }
     return <a href={url} className="text-blue-400 underline">Preuzmi</a>
+  }
+
+  const toggleEffect = (name: string) => {
+    setEffects((prev) => prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name])
   }
 
   return (
     <div className="min-h-screen flex">
-      <aside className="w-56 bg-slate-900 border-r border-slate-800 p-4 flex flex-col gap-2">
-        <h1 className="text-lg font-bold mb-4 text-white">{t('appName')}</h1>
+      <aside className="w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col gap-2">
+        <h1 className="text-lg font-bold mb-2 text-white">{t('appName')}</h1>
         {SECTIONS.map((s) => {
           const Icon = s.icon
           return (
@@ -174,6 +218,16 @@ export default function App() {
             </button>
           )
         })}
+        <div className="mt-auto pt-4 border-t border-slate-800">
+          <label className="text-xs text-slate-400">API token</label>
+          <input
+            type="password"
+            value={token}
+            onChange={(e) => saveToken(e.target.value)}
+            placeholder="Unesite API token"
+            className="w-full mt-1 p-2 bg-slate-950 border border-slate-700 rounded text-xs"
+          />
+        </div>
       </aside>
 
       <main className="flex-1 p-6 overflow-auto">
@@ -206,7 +260,7 @@ export default function App() {
           </div>
         )}
 
-        {(section === 'imageToAscii' || section === 'videoToAscii') && (
+        {(section === 'imageToAscii' || section === 'videoToAscii' || section === 'animation') && (
           <div className="space-y-4 max-w-2xl">
             <h2 className="text-xl font-semibold">{t(section)}</h2>
             <div className="grid grid-cols-2 gap-4">
@@ -236,7 +290,7 @@ export default function App() {
                   <option value="transparent">{t('transparent')}</option>
                 </select>
               </label>
-              {section === 'videoToAscii' && (
+              {section !== 'imageToAscii' && (
                 <>
                   <label className="block">
                     {t('fps')}
@@ -259,6 +313,14 @@ export default function App() {
                       <option value="html">HTML</option>
                       <option value="txt">TXT</option>
                     </>
+                  ) : section === 'animation' ? (
+                    <>
+                      <option value="gif">GIF</option>
+                      <option value="mp4">MP4</option>
+                      <option value="webm">WebM</option>
+                      <option value="html">HTML</option>
+                      <option value="zip">ZIP</option>
+                    </>
                   ) : (
                     <>
                       <option value="gif">GIF</option>
@@ -273,8 +335,24 @@ export default function App() {
               <input type="checkbox" checked={contrastAdapt} onChange={(e) => setContrastAdapt(e.target.checked)} />
               {t('contrastAdapt')}
             </label>
+            {section === 'animation' && (
+              <div className="p-3 bg-slate-900 border border-slate-700 rounded">
+                <p className="text-sm font-medium mb-2">Efekti</p>
+                <div className="flex flex-wrap gap-2">
+                  {['pulse', 'flicker', 'scan', 'glitch', 'matrix', 'wave', 'noise', 'fade_in', 'fade_out', 'color_shift'].map((eff) => (
+                    <button
+                      key={eff}
+                      onClick={() => toggleEffect(eff)}
+                      className={`px-2 py-1 rounded text-xs border ${effects.includes(eff) ? 'bg-blue-600 border-blue-500' : 'border-slate-600 hover:bg-slate-800'}`}
+                    >
+                      {eff}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <button
-              onClick={section === 'imageToAscii' ? handleImageConvert : handleVideoConvert}
+              onClick={section === 'imageToAscii' ? handleImageConvert : section === 'videoToAscii' ? handleVideoConvert : section === 'animation' ? (outputFormat === 'zip' ? handleExport : handleAnimationRender) : handleAnimationRender}
               disabled={loading}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 rounded text-white"
             >
@@ -321,6 +399,22 @@ export default function App() {
               ))}
               {jobs.length === 0 && <p className="text-slate-400">Nema poslova.</p>}
             </div>
+          </div>
+        )}
+
+        {section === 'settings' && (
+          <div className="space-y-4 max-w-xl">
+            <h2 className="text-xl font-semibold">{t('settings')}</h2>
+            <label className="block">
+              API token
+              <input
+                type="password"
+                value={token}
+                onChange={(e) => saveToken(e.target.value)}
+                className="w-full mt-1 p-2 bg-slate-900 border border-slate-700 rounded"
+              />
+            </label>
+            <p className="text-sm text-slate-400">Token se čuva lokalno u pregledniku.</p>
           </div>
         )}
       </main>

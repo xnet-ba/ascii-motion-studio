@@ -4,8 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from core.config import settings
+from core.rate_limit import rate_limit_middleware
 from storage.db import init_db
-from api.routes import upload, image, video, export, jobs, projects, health, system
+from api.routes import upload, image, video, animation, export, jobs, projects, health, system
 
 
 @asynccontextmanager
@@ -31,12 +32,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.middleware("http")(rate_limit_middleware)
 
 app.include_router(health.router, prefix="/api/v1", tags=["Health"])
 app.include_router(system.router, prefix="/api/v1", tags=["System"])
 app.include_router(upload.router, prefix="/api/v1", tags=["Upload"])
 app.include_router(image.router, prefix="/api/v1", tags=["Image"])
 app.include_router(video.router, prefix="/api/v1", tags=["Video"])
+app.include_router(animation.router, prefix="/api/v1", tags=["Animation"])
 app.include_router(export.router, prefix="/api/v1", tags=["Export"])
 app.include_router(jobs.router, prefix="/api/v1", tags=["Jobs"])
 app.include_router(projects.router, prefix="/api/v1", tags=["Projects"])

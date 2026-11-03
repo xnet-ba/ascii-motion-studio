@@ -18,6 +18,8 @@ from engines.ascii.renderer import RenderOptions, render_ascii
 from engines.image.converter import convert_image
 from engines.video.converter import render_video
 from engines.export.web import render_web_animation
+from engines.export.zip import render_zip_package
+from engines.animation.renderer import render_animation
 from storage import db
 
 
@@ -182,6 +184,29 @@ class TestVideoConversion:
         result = render_web_animation(src, out, opts, fps=5, max_duration=2, max_frames=20)
         assert out.exists()
         assert "<canvas" in out.read_text()
+
+    def test_animation_effects_gif(self, tmp_root):
+        src = tmp_root / "logo.png"
+        out = tmp_root / "anim.gif"
+        make_logo_png(src)
+        opts = RenderOptions(width=40, mode="color", background="black")
+        result = render_animation(src, out, opts, fps=5, max_duration=2, max_frames=20,
+                                  output_format="gif", effects=[{"name": "pulse"}])
+        assert out.exists()
+        assert result["frames"] > 1
+
+    def test_zip_export(self, tmp_root):
+        src = tmp_root / "logo.png"
+        out = tmp_root / "package.zip"
+        make_logo_png(src)
+        opts = RenderOptions(width=40, mode="grayscale", background="black")
+        result = render_zip_package(src, out, opts, fps=5, max_duration=2, max_frames=20)
+        assert out.exists()
+        import zipfile
+        with zipfile.ZipFile(out) as zf:
+            assert "index.html" in zf.namelist()
+            assert "configuration.json" in zf.namelist()
+            assert "README.md" in zf.namelist()
 
 
 class TestSecurityAndLimits:
