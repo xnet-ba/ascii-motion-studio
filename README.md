@@ -39,6 +39,12 @@ Professional ASCII Image, Video and Animation Generator.
 - Autentifikacija putem Bearer tokena.
 - Systemd servisi sa automatskim restartom.
 
+## 🎬 Demo
+
+![video-ascii](examples/video-ascii.gif)
+
+<sub>Video: [MP4](examples/video-ascii.mp4) · [interaktivni HTML demo](examples/animation.html) · logo: [GIF](examples/logo-color-black.gif) [PNG](examples/logo-color-black.png)</sub>
+
 ## Arhitektura
 
 ```
